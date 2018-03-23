@@ -704,6 +704,7 @@ box float_to_box(float *f, int stride);
 void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes);
 
 matrix network_predict_data(network *net, data test);
+matrix network_predict_matrix(network *net, matrix test);
 image **load_alphabet();
 image get_network_image(network *net);
 float *network_predict(network *net, float *input);
@@ -712,6 +713,7 @@ int network_width(network *net);
 int network_height(network *net);
 float *network_predict_image(network *net, image im);
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
+void network_detect_batch(network *net, matrix data, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
 int num_boxes(network *net);
 box *make_boxes(network *net);
 

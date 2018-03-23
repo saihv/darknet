@@ -520,11 +520,25 @@ float **make_probs(network *net)
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
 {
     network_predict_image(net, im);
+    
     layer l = net->layers[net->n-1];
     if(l.type == REGION){
         get_region_boxes(l, im.w, im.h, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
         if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
     }
+    
+}
+
+void network_detect_batch(network *net, matrix data, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
+{
+    matrix pred = network_predict_matrix(net, data);
+    /*
+    layer l = net->layers[net->n-1];
+    if(l.type == REGION){
+        get_region_boxes(l, im.w, im.h, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
+        if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+    }
+    */
 }
 
 float *network_predict_image(network *net, image im)
@@ -578,6 +592,29 @@ matrix network_predict_data(network *net, data test)
         float *out = network_predict(net, X);
         for(b = 0; b < net->batch; ++b){
             if(i+b == test.X.rows) break;
+            for(j = 0; j < k; ++j){
+                pred.vals[i+b][j] = out[j+b*k];
+            }
+        }
+    }
+    free(X);
+    return pred;   
+}
+
+matrix network_predict_matrix(network *net, matrix test)
+{
+    int i,j,b;
+    int k = net->outputs;
+    matrix pred = make_matrix(test.rows, k);
+    float *X = calloc(net->batch*test.cols, sizeof(float));
+    for(i = 0; i < test.rows; i += net->batch){
+        for(b = 0; b < net->batch; ++b){
+            if(i+b == test.rows) break;
+            memcpy(X+b*test.cols, test.vals[i+b], test.cols*sizeof(float));
+        }
+        float *out = network_predict(net, X);
+        for(b = 0; b < net->batch; ++b){
+            if(i+b == test.rows) break;
             for(j = 0; j < k; ++j){
                 pred.vals[i+b][j] = out[j+b*k];
             }

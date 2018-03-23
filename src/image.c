@@ -586,6 +586,77 @@ image ndarray_to_image(unsigned char* src, long* shape, long* strides)
 
     return im;
 }
+
+matrix ndarray_to_matrix(unsigned char* src, long* shape, long* strides)
+{
+    int nb = shape[0];
+    int h = shape[1];
+    int w = shape[2];
+    int c = shape[3];
+    matrix X = make_matrix(nb, h*w*c);
+
+    int step_b = strides[0];
+    int step_h = strides[1];
+    int step_w = strides[2];
+    int step_c = strides[3];
+    
+    int b, i, j, k;
+    int index1, index2 = 0;
+    for(b = 0; b < nb ; ++b){
+        for(i = 0; i < h; ++i){
+            for(k= 0; k < c; ++k){
+                for(j = 0; j < w; ++j){
+
+                    index1 = k*w*h + i*w + j;
+                    index2 = step_b*b + step_h*i + step_w*j + step_c*k;
+                    //fprintf(stderr, "w=%d h=%d c=%d step_w=%d step_h=%d step_c=%d \n", w, h, c, step_w, step_h, step_c);
+                    //fprintf(stderr, "im.data[%d]=%u data[%d]=%f \n", index1, src[index2], index2, src[index2]/255.);
+                    X.vals[b][index1] = src[index2]/255.;
+                }
+            }
+        }
+    }
+    return X;
+}
+
+data ndarray_to_data(unsigned char* src, long* shape, long* strides)
+{
+    data d = {0};
+    d.shallow = 0;
+
+    
+    int nb = shape[0];
+    int h = shape[1];
+    int w = shape[2];
+    int c = shape[3];
+    matrix X = make_matrix(nb, h*w*c);
+    d.X = X;
+
+    int step_b = strides[0];
+    int step_h = strides[1];
+    int step_w = strides[2];
+    int step_c = strides[3];
+    
+    int b, i, j, k;
+    int index1, index2 = 0;
+    for(b = 0; b < nb ; ++b){
+        for(i = 0; i < h; ++i){
+            for(k= 0; k < c; ++k){
+                for(j = 0; j < w; ++j){
+
+                    index1 = k*w*h + i*w + j;
+                    index2 = step_b*b + step_h*i + step_w*j + step_c*k;
+                    //fprintf(stderr, "w=%d h=%d c=%d step_w=%d step_h=%d step_c=%d \n", w, h, c, step_w, step_h, step_c);
+                    //fprintf(stderr, "im.data[%d]=%u data[%d]=%f \n", index1, src[index2], index2, src[index2]/255.);
+                    X.vals[b][index1] = src[index2]/255.;
+                }
+            }
+        }
+    }
+    smooth_data(d);
+    return d;
+}
+
 #endif
 
 #ifdef OPENCV
