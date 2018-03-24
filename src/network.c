@@ -606,13 +606,21 @@ matrix network_predict_matrix(network *net, matrix test)
     int i,j,b;
     int k = net->outputs;
     matrix pred = make_matrix(test.rows, k);
+    fprintf(stderr, "Batch size is %d \n", net->batch);
     float *X = calloc(net->batch*test.cols, sizeof(float));
     for(i = 0; i < test.rows; i += net->batch){
         for(b = 0; b < net->batch; ++b){
             if(i+b == test.rows) break;
             memcpy(X+b*test.cols, test.vals[i+b], test.cols*sizeof(float));
         }
+        fprintf(stderr, "Processing a batch of %d images \n", net->batch);
+
+        clock_t t;
+        t = clock();
         float *out = network_predict(net, X);
+        t = clock() - t;
+        double time_taken = ((double)t)/CLOCKS_PER_SEC;
+        fprintf(stderr, "Batch prediction took %f seconds to execute \n", time_taken);
         for(b = 0; b < net->batch; ++b){
             if(i+b == test.rows) break;
             for(j = 0; j < k; ++j){

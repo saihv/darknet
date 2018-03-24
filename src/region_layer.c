@@ -454,6 +454,34 @@ void get_region_boxes(layer l, int w, int h, int netw, int neth, float thresh, f
         }
     }
     correct_region_boxes(boxes, l.w*l.h*l.n, w, h, netw, neth, relative);
+
+    float max_prob = 0;
+    int max_index = 0, max_j = 0;
+    for (i = 0; i < l.w*l.h; ++i){
+        int row = i / l.w;
+        int col = i % l.w;
+        for(n = 0; n < l.n; ++n){
+            int index = i*l.n + n;
+                for(j = 0; j < l.classes; ++j){
+                    if(probs[index][j] > max_prob) {
+                        max_prob = probs[index][j];
+                        max_index = index;
+                        max_j = j;
+                    }
+                }
+       }
+    }
+
+    for (i = 0; i < l.w*l.h; ++i){
+        int row = i / l.w;
+        int col = i % l.w;
+        for(n = 0; n < l.n; ++n){
+            int index = i*l.n + n;
+                for(j = 0; j < l.classes; ++j){
+                    if(index != max_index || j != max_j) probs[index][j] = 0;
+                }
+       }
+    }
 }
 
 #ifdef GPU
