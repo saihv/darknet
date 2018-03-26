@@ -517,6 +517,26 @@ float **make_probs(network *net)
     return probs;
 }
 
+box **make_boxes_array(network *net)
+{
+    layer l = net->layers[net->n-1];
+    box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
+
+    box **box_array = calloc(4, sizeof(boxes));
+    return box_array;
+}
+
+float ***make_probs_array(network *net)
+{
+    int j;
+    layer l = net->layers[net->n-1];
+    float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
+    for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
+
+    float ***prob_array = calloc(4, sizeof(probs));
+    return prob_array;
+}
+
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
 {
     network_predict_image(net, im);
@@ -529,16 +549,46 @@ void network_detect(network *net, image im, float thresh, float hier_thresh, flo
     
 }
 
-void network_detect_batch(network *net, matrix data, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
+void network_detect_batch(network *net, matrix test, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
 {
-    matrix pred = network_predict_matrix(net, data);
-    /*
-    layer l = net->layers[net->n-1];
-    if(l.type == REGION){
-        get_region_boxes(l, im.w, im.h, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
-        if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+    int i,j,b;
+    image im, imr;
+    im.w = 640;
+    im.h = 360;
+    im.c = 3;
+    int k = net->outputs;
+    matrix pred = make_matrix(test.rows, k);
+    float *X = calloc(net->batch*test.cols, sizeof(float));
+    fprintf(stderr, "MONEKYMONETKE");
+    for(i = 0; i < test.rows; i += net->batch){
+        for(b = 0; b < net->batch; ++b){
+            if(i+b == test.rows) break;
+            im.data = test.vals[i+b];
+            clock_t t;
+            t = clock();
+            imr = letterbox_image(im, net->w, net->h);
+            t = clock() - t;
+            double time_taken = ((double)t)/CLOCKS_PER_SEC;
+            fprintf(stderr, "Letter boxing took %f seconds \n", time_taken);
+            memcpy(X+b*test.cols, test.vals[i+b], test.cols*sizeof(float));
+        }
+        
+        clock_t t;
+        t = clock();
+        float *out = network_predict(net, X);
+        t = clock() - t;
+        double time_taken = ((double)t)/CLOCKS_PER_SEC;
+        fprintf(stderr, "Batch prediction took %f seconds \n", time_taken);
+        layer l = net->layers[net->n-1];
+        for(b = 0; b < net->batch; ++b){
+            get_region_boxes(l, 640, 360, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
+            if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+            //for(j = 0; j < k; ++j){
+             //   pred.vals[i+b][j] = out[j+b*k];
+            //}
+        }
     }
-    */
+    free(X);
 }
 
 float *network_predict_image(network *net, image im)
