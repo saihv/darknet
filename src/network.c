@@ -559,18 +559,18 @@ void network_detect_batch(network *net, matrix test, float thresh, float hier_th
     int k = net->outputs;
     matrix pred = make_matrix(test.rows, k);
     float *X = calloc(net->batch*test.cols, sizeof(float));
-    fprintf(stderr, "MONEKYMONETKE");
     for(i = 0; i < test.rows; i += net->batch){
         for(b = 0; b < net->batch; ++b){
             if(i+b == test.rows) break;
             im.data = test.vals[i+b];
+            rgbgr_image(im);
             clock_t t;
             t = clock();
             imr = letterbox_image(im, net->w, net->h);
             t = clock() - t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
             fprintf(stderr, "Letter boxing took %f seconds \n", time_taken);
-            memcpy(X+b*test.cols, test.vals[i+b], test.cols*sizeof(float));
+            memcpy(X+b*test.cols, imr.data, test.cols*sizeof(float));
         }
         
         clock_t t;
@@ -580,13 +580,27 @@ void network_detect_batch(network *net, matrix test, float thresh, float hier_th
         double time_taken = ((double)t)/CLOCKS_PER_SEC;
         fprintf(stderr, "Batch prediction took %f seconds \n", time_taken);
         layer l = net->layers[net->n-1];
+        box *boxesBatch = calloc(l.w*l.h*l.n, sizeof(box));
+        float **probsBatch = calloc(l.w*l.h*l.n, sizeof(float *));
+        int j;
+        for(j = 0; j < l.w*l.h*l.n; ++j) probsBatch[j] = calloc(l.classes, sizeof(float *));
         for(b = 0; b < net->batch; ++b){
+
+        l.output = l.output + net->h*net->w*3;
             get_region_boxes(l, 640, 360, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
             if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
             //for(j = 0; j < k; ++j){
              //   pred.vals[i+b][j] = out[j+b*k];
             //}
-        }
+            //boxes[i+b] = boxesBatch;
+            //probs[i+b] = probsBatch;
+
+            fprintf(stderr, "transfer complete");
+            fprintf(stderr, "Size is %d", sizeof(l.output));
+            //l.output = l.output + test.cols;
+
+              l.output = l.output;
+        }   
     }
     free(X);
 }
