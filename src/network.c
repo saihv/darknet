@@ -522,7 +522,7 @@ box **make_boxes_array(network *net)
     layer l = net->layers[net->n-1];
     box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
 
-    box **box_array = calloc(4, sizeof(boxes));
+    box **box_array = calloc(net->batch, sizeof(boxes));
     return box_array;
 }
 
@@ -533,7 +533,7 @@ float ***make_probs_array(network *net)
     float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
     for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
 
-    float ***prob_array = calloc(4, sizeof(probs));
+    float ***prob_array = calloc(net->batch, sizeof(probs));
     return prob_array;
 }
 
@@ -549,58 +549,57 @@ void network_detect(network *net, image im, float thresh, float hier_thresh, flo
     
 }
 
-void network_detect_batch(network *net, matrix test, float thresh, float hier_thresh, float nms, box *boxes, float **probs)
+void network_detect_batch(network *net, matrix test, float thresh, float hier_thresh, float nms, box **boxes, float ***probs)
 {
     int i,j,b;
     image im, imr;
-    im.w = 640;
     im.h = 360;
+    im.w = 640;
     im.c = 3;
     int k = net->outputs;
-    matrix pred = make_matrix(test.rows, k);
+
+    clock_t t = clock();
     float *X = calloc(net->batch*test.cols, sizeof(float));
     for(i = 0; i < test.rows; i += net->batch){
-        for(b = 0; b < net->batch; ++b){
-            if(i+b == test.rows) break;
+        #pragma omp parallel num_threads(4) 
+        {
+            #pragma omp for
+            for(b = 0; b < net->batch; ++b){
             im.data = test.vals[i+b];
-            rgbgr_image(im);
-            clock_t t;
-            t = clock();
-            imr = letterbox_image(im, net->w, net->h);
-            t = clock() - t;
-            double time_taken = ((double)t)/CLOCKS_PER_SEC;
-            fprintf(stderr, "Letter boxing took %f seconds \n", time_taken);
-            memcpy(X+b*test.cols, imr.data, test.cols*sizeof(float));
+            //rgbgr_image(im);
+            //imr = letterbox_image(im, net->w, net->h);
+            imr = resize_image(im, net->w, net->h);
+            memcpy(X + b*net->w*net->h*3, imr.data, net->w*net->h*3*sizeof(float));
+        }
         }
         
-        clock_t t;
+        t = clock() - t;
+        fprintf(stderr, "Time taken for preprocessing: %f \n", ((double)t)/CLOCKS_PER_SEC);
         t = clock();
         float *out = network_predict(net, X);
         t = clock() - t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC;
-        fprintf(stderr, "Batch prediction took %f seconds \n", time_taken);
+        fprintf(stderr, "Time taken for batch prediction: %f \n", ((double)t)/CLOCKS_PER_SEC);
         layer l = net->layers[net->n-1];
-        box *boxesBatch = calloc(l.w*l.h*l.n, sizeof(box));
-        float **probsBatch = calloc(l.w*l.h*l.n, sizeof(float *));
-        int j;
-        for(j = 0; j < l.w*l.h*l.n; ++j) probsBatch[j] = calloc(l.classes, sizeof(float *));
+         t = clock();
         for(b = 0; b < net->batch; ++b){
+            box *boxesBatch = calloc(l.w*l.h*l.n, sizeof(box));
+            float **probsBatch = calloc(l.w*l.h*l.n, sizeof(float *));
+            int j;
+            for(j = 0; j < l.w*l.h*l.n; ++j) 
+                probsBatch[j] = calloc(l.classes + 1, sizeof(float *));
 
-        l.output = l.output + net->h*net->w*3;
-            get_region_boxes(l, 640, 360, net->w, net->h, thresh, probs, boxes, 0, 0, 0, hier_thresh, 0);
-            if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-            //for(j = 0; j < k; ++j){
-             //   pred.vals[i+b][j] = out[j+b*k];
-            //}
-            //boxes[i+b] = boxesBatch;
-            //probs[i+b] = probsBatch;
+            get_region_boxes(l, 640, 360, net->w, net->h, thresh, probsBatch, boxesBatch, 0, 0, 0, hier_thresh, 0);
+            if (nms) do_nms_sort(boxesBatch, probsBatch, l.w*l.h*l.n, l.classes, nms);
 
-            fprintf(stderr, "transfer complete");
-            fprintf(stderr, "Size is %d", sizeof(l.output));
-            //l.output = l.output + test.cols;
+            boxes[i+b] = boxesBatch;
+            probs[i+b] = probsBatch;
 
-              l.output = l.output;
+            // memcpy(&boxes[i+b], boxesBatch, l.h*l.w*l.n*sizeof(box));
+            // memcpy(&probs[i+b], probsBatch, l.h*l.w*l.n*sizeof(float*));
+            l.output = l.output + (l.w*l.h*l.c);
         }   
+        t = clock() - t;
+        fprintf(stderr, "Time taken for output retrieval: %f \n", ((double)t)/CLOCKS_PER_SEC);
     }
     free(X);
 }

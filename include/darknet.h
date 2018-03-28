@@ -713,7 +713,7 @@ int network_width(network *net);
 int network_height(network *net);
 float *network_predict_image(network *net, image im);
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
-void network_detect_batch(network *net, matrix data, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
+void network_detect_batch(network *net, matrix data, float thresh, float hier_thresh, float nms, box **boxes, float ***probs);
 int num_boxes(network *net);
 box *make_boxes(network *net);
 

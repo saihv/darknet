@@ -1,7 +1,7 @@
 GPU=1
 CUDNN=1
 OPENCV=1
-OPENMP=0
+OPENMP=1
 NUMPY=1
 DEBUG=0
 
@@ -52,9 +52,9 @@ CFLAGS+= -DNUMPY
 endif
 
 ifeq ($(GPU), 1) 
-COMMON+= -DGPU -I/usr/local/cuda/include/
+COMMON+= -DGPU -I/usr/local/cuda-8.0/include/
 CFLAGS+= -DGPU
-LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand
+LDFLAGS+= -L/usr/local/cuda-8.0/lib64 -lcuda -lcudart -lcublas -lcurand
 endif
 
 ifeq ($(CUDNN), 1) 

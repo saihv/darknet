@@ -587,6 +587,7 @@ image ndarray_to_image(unsigned char* src, long* shape, long* strides)
 
 matrix ndarray_to_matrix(unsigned char* src, long* shape, long* strides)
 {
+    clock_t t = clock();
     int nb = shape[0];
     int h = shape[1];
     int w = shape[2];
@@ -597,8 +598,7 @@ matrix ndarray_to_matrix(unsigned char* src, long* shape, long* strides)
     int step_h = strides[1];
     int step_w = strides[2];
     int step_c = strides[3];
-    
-    //image im = make_image(w, h, c);
+
     int b, i, j, k;
     int index1, index2 = 0;
 
@@ -614,9 +614,9 @@ matrix ndarray_to_matrix(unsigned char* src, long* shape, long* strides)
                 }
             }
         }
-        //rgbgr_image(im);
-       // X.vals[b] = im.data;
     }
+    t = clock() - t;
+    fprintf(stderr, "Time taken for creating data matrix: %f \n", ((double)t)/CLOCKS_PER_SEC);
     return X;
 }
 
@@ -624,7 +624,6 @@ data ndarray_to_data(unsigned char* src, long* shape, long* strides)
 {
     data d = {0};
     d.shallow = 0;
-
     
     int nb = shape[0];
     int h = shape[1];
@@ -644,7 +643,6 @@ data ndarray_to_data(unsigned char* src, long* shape, long* strides)
         for(i = 0; i < h; ++i){
             for(k= 0; k < c; ++k){
                 for(j = 0; j < w; ++j){
-
                     index1 = k*w*h + i*w + j;
                     index2 = step_b*b + step_h*i + step_w*j + step_c*k;
                     //fprintf(stderr, "w=%d h=%d c=%d step_w=%d step_h=%d step_c=%d \n", w, h, c, step_w, step_h, step_c);
@@ -1041,12 +1039,8 @@ image letterbox_image(image im, int w, int h)
         new_h = h;
         new_w = (im.w * h)/im.h;
     }
-    clock_t t = clock();
     image resized = resize_image(im, new_w, new_h);
     image boxed = make_image(w, h, im.c);
-    t = clock() - t;
-    double time_taken = ((double)t)/CLOCKS_PER_SEC;
-    fprintf(stderr, "Resizing took %f seconds \n", time_taken);
     fill_image(boxed, .5);
     //int i;
     //for(i = 0; i < boxed.w*boxed.h*boxed.c; ++i) boxed.data[i] = 0;
